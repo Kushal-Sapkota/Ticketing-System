@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticketing-config
+  namespace: {{ .Release.Namespace }}
+data:
+  POSTGRES_DB: {{ .Values.config.postgresDb }}
+  POSTGRES_USER: {{ .Values.config.postgresUser }}
+  DATABASE_URL: postgresql+psycopg://{{ .Values.config.postgresUser }}:{{ .Values.secrets.dbPassword }}@postgres-service:5432/{{ .Values.config.postgresDb }}
+  REDIS_URL: redis://redis-service:6379/0
+  JWT_ALGORITHM: {{ .Values.config.jwtAlgorithm }}
+  ACCESS_TOKEN_EXPIRE_MINUTES: {{ .Values.config.accessTokenExpireMinutes | quote }}
+  CORS_ORIGINS: {{ .Values.config.corsOrigins | quote }}
+  DEFAULT_ADMIN_EMAIL: {{ .Values.config.defaultAdminEmail }}
+  DEFAULT_ADMIN_PASSWORD: {{ .Values.config.defaultAdminPassword }}
+  DEFAULT_ADMIN_NAME: {{ .Values.config.defaultAdminName }}
