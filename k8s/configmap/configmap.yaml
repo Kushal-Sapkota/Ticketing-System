@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticketing-config
+  namespace: ticketing
+data:
+  POSTGRES_DB: helpdesk
+  POSTGRES_USER: helpdesk
+  DATABASE_URL: postgresql+psycopg://helpdesk:helpdesk_password@postgres-service:5432/helpdesk
+  REDIS_URL: redis://redis-service:6379/0
+  JWT_ALGORITHM: HS256
+  ACCESS_TOKEN_EXPIRE_MINUTES: "480"
+  CORS_ORIGINS: '["http://localhost:3000"]'
+  DEFAULT_ADMIN_EMAIL: admin@company.local
+  DEFAULT_ADMIN_PASSWORD: ChangeMe123!
+  DEFAULT_ADMIN_NAME: Default Admin
