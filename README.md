@@ -7,6 +7,7 @@ IT Helpdesk ticketing system used as a platform to apply a full DevOps pipeline 
 ---
 
 ## Pipeline Overview
+
 GitHub → Jenkins → Docker Hub → Kubernetes → Prometheus/Grafana
 
 **Kubernetes workloads:**
@@ -23,79 +24,131 @@ GitHub → Jenkins → Docker Hub → Kubernetes → Prometheus/Grafana
 
 ## Phases
 
-**Phase 1 — Containerization**
+### Phase 1 — Containerization
+
 - Multistage Dockerfiles for backend (Python/venv) and frontend (Node → Nginx)
 - Non-root users, health checks, named volumes
 - Docker Compose v2 with service health dependencies
 
-**Phase 2 — CI/CD (Jenkins)**
-- Declarative pipeline: Checkout → Build → Push → Deploy
-- Images pushed to Docker Hub as `kushal81/ticketing-backend` and `kushal81/ticketing-frontend`
-- Secrets injected via Jenkins credentials, `.env` generated at deploy time
+### Phase 2 — CI/CD (Jenkins)
 
-**Phase 3 — Kubernetes**
+- Declarative pipeline: Checkout → Build → Push → Deploy
+- Images pushed to Docker Hub as:
+  - `kushal81/ticketing-backend`
+  - `kushal81/ticketing-frontend`
+- Secrets injected via Jenkins credentials
+- `.env` generated at deploy time
+
+### Phase 3 — Kubernetes
+
 - Namespace: `ticketing`
 - PostgreSQL as StatefulSet with PV/PVC
-- Backend with 2 replicas, liveness/readiness probes on `/health`
-- Ingress routing `/api/*` to backend, `/` to frontend
+- Backend with 2 replicas
+- Liveness and readiness probes on `/health`
+- Ingress routes:
+  - `/api/*` → Backend
+  - `/` → Frontend
 - HPA on backend (2–5 replicas, 70% CPU threshold)
-- ResourceQuota on namespace
+- ResourceQuota applied to the namespace
 
-**Phase 4 — Helm**
+### Phase 4 — Helm
+
 - Full stack packaged as a Helm chart under `helm/ticketing/`
-- `values.yaml` controls image tags, replicas, resources, ingress host
-- Deploy: `helm install ticketing helm/ticketing/ --namespace ticketing`
+- `values.yaml` controls image tags, replicas, resources, and ingress host
+- Deploy with:
 
-**Phase 5 — Monitoring**
-- `kube-prometheus-stack` installed via Helm in `monitoring` namespace
-- `prometheus-fastapi-instrumentator` exposes `/metrics` on backend
-- ServiceMonitor scrapes both backend replicas every 15s
-- Grafana dashboards for HTTP request rate, latency, pod resource usage
+```bash
+helm install ticketing helm/ticketing/ --namespace ticketing
+```
+
+### Phase 5 — Monitoring
+
+- `kube-prometheus-stack` installed via Helm in the `monitoring` namespace
+- `prometheus-fastapi-instrumentator` exposes `/metrics`
+- ServiceMonitor scrapes backend replicas every 15 seconds
+- Grafana dashboards for:
+  - HTTP request rate
+  - Request latency
+  - CPU & memory usage
+  - Pod resource utilization
 
 ---
 
 ## Local Setup
 
 ### Prerequisites
+
 - Docker + Docker Compose v2
 - Minikube + kubectl
 - Helm v3
 - Jenkins (native)
 
 ### Run with Docker Compose
+
 ```bash
 cp .env.example .env
-# fill in secrets, then:
+# Fill in secrets
 docker compose up --build
 ```
-Access: `http://localhost:3000`
+
+Access:
+
+```
+http://localhost:3000
+```
+
+---
 
 ### Run with Kubernetes
+
 ```bash
 minikube start
-helm install ticketing helm/ticketing/ --namespace ticketing --create-namespace
+
+helm install ticketing helm/ticketing/ \
+  --namespace ticketing \
+  --create-namespace
+
 echo "$(minikube ip) ticketing.local" | sudo tee -a /etc/hosts
 ```
-Access: `http://ticketing.local`
+
+Access:
+
+```
+http://ticketing.local
+```
+
+---
 
 ### Run with Jenkins
-- Add `dockerhub-credentials` (Docker Hub token) to Jenkins global credentials
-- Add `ticketing-jwt-secret` and `ticketing-db-password` as Secret Text credentials
-- Create Pipeline job pointing to this repo, branch `main`, script path `Jenkinsfile`
+
+1. Add `dockerhub-credentials` (Docker Hub token) to Jenkins Global Credentials.
+2. Add the following Secret Text credentials:
+   - `ticketing-jwt-secret`
+   - `ticketing-db-password`
+3. Create a Pipeline job:
+   - Repository: this repo
+   - Branch: `main`
+   - Script path: `Jenkinsfile`
 
 ---
 
 ## Repository Structure
+
+```text
 .
 ├── backend/            # FastAPI application
 ├── frontend/           # React + Vite application
-├── helm/ticketing/     # Helm chart
+├── helm/
+│   └── ticketing/      # Helm chart
 ├── k8s/                # Raw Kubernetes manifests
 ├── Jenkinsfile         # CI/CD pipeline
-└── docker-compose.yml
+├── docker-compose.yml
+└── README.md
+```
 
 ---
 
-## Images
+## Docker Images
+
 - `kushal81/ticketing-backend`
 - `kushal81/ticketing-frontend`
