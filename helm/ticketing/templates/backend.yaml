@@ -18,6 +18,7 @@ spec:
           image: {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
           ports:
             - containerPort: 8000
+              name: http
           envFrom:
             - configMapRef:
                 name: ticketing-config
@@ -52,12 +53,15 @@ kind: Service
 metadata:
   name: backend-service
   namespace: {{ .Release.Namespace }}
+  labels:
+    app: backend
 spec:
   selector:
     app: backend
   ports:
     - port: 8000
       targetPort: 8000
+      name: http
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -78,3 +82,19 @@ spec:
         target:
           type: Utilization
           averageUtilization: {{ .Values.backend.hpa.cpuUtilization }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend-monitor
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

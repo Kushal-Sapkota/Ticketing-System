@@ -1,8 +1,7 @@
 import logging
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from prometheus_fastapi_instrumentator import Instrumentator
 from app.api.routes.auth import router as auth_router
 from app.api.routes.agents import router as agents_router
 from app.api.routes.dashboard import router as dashboard_router
@@ -12,9 +11,7 @@ from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
 
-
 logging.basicConfig(level=logging.INFO)
-
 
 app = FastAPI(title=settings.app_name, version="1.0.0")
 
@@ -26,16 +23,16 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+Instrumentator().instrument(app).expose(app)
+
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(agents_router, prefix=settings.api_v1_prefix)
 app.include_router(tickets_router, prefix=settings.api_v1_prefix)
 app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
 
-
 @app.on_event("startup")
 def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
-
 
 @app.get("/health")
 def health() -> dict[str, str]:
