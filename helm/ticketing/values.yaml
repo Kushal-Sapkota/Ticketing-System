@@ -56,7 +56,7 @@ config:
   jwtAlgorithm: HS256
   accessTokenExpireMinutes: "480"
   corsOrigins: '["http://localhost:3000"]'
-  defaultAdminEmail: admin@company.local
+  defaultAdminEmail: admin@helpdesk.com
   defaultAdminPassword: ChangeMe123!
   defaultAdminName: Default Admin
   postgresDb: helpdesk

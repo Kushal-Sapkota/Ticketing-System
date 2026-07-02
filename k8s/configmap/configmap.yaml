@@ -11,6 +11,6 @@ data:
   JWT_ALGORITHM: HS256
   ACCESS_TOKEN_EXPIRE_MINUTES: "480"
   CORS_ORIGINS: '["http://localhost:3000"]'
-  DEFAULT_ADMIN_EMAIL: admin@company.local
+  DEFAULT_ADMIN_EMAIL: admin@helpdesk.com
   DEFAULT_ADMIN_PASSWORD: ChangeMe123!
   DEFAULT_ADMIN_NAME: Default Admin
