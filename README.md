@@ -1,66 +1,101 @@
-# IT Helpdesk Ticketing System
+# Ticketing System — DevOps Project
 
-Internal ticketing tool for desk-based IT support intake, assignment, and tracking.
+IT Helpdesk ticketing system used as a platform to apply a full DevOps pipeline from containerization to monitoring.
+
+**Stack:** FastAPI + PostgreSQL + Redis + React (Vite) + Nginx
+
+---
 
 ## Architecture
+GitHub → Jenkins CI/CD → Docker Hub
+↓
+Kubernetes (Minikube)
+├── Frontend (Nginx)
+├── Backend (FastAPI x2 replicas)
+├── PostgreSQL (StatefulSet)
+└── Redis
+↓
+Prometheus → Grafana
 
-- **Backend:** FastAPI + SQLAlchemy + PostgreSQL
-- **Notifications:** Redis pub/sub for ticket assignment events
-- **Frontend:** React + Vite + plain CSS
-- **Auth:** JWT for agents and admins only
+---
 
-The backend exposes OpenAPI docs at `http://localhost:8000/docs`.
+## Phases
 
-## Local run with Docker
+### Phase 1 — Containerization
+- Multistage Dockerfiles for backend (Python/venv) and frontend (Node → Nginx)
+- Non-root users, health checks, named volumes
+- Docker Compose v2 with service health dependencies
 
-1. Copy `.env.example` to `.env`.
-2. Start the stack:
+### Phase 2 — CI/CD (Jenkins)
+- Declarative pipeline: Checkout → Build → Push → Deploy
+- Images pushed to Docker Hub as `kushal81/ticketing-backend` and `kushal81/ticketing-frontend`
+- Secrets injected via Jenkins credentials, `.env` generated at deploy time
 
+### Phase 3 — Kubernetes
+- Namespace: `ticketing`
+- PostgreSQL as StatefulSet with PV/PVC
+- Backend with 2 replicas, liveness/readiness probes on `/health`
+- Ingress (nginx) routing `/api/*` to backend, `/` to frontend
+- HPA on backend (2–5 replicas, 70% CPU threshold)
+- ResourceQuota on namespace
+- Secrets and ConfigMap for configuration
+
+### Phase 4 — Helm
+- Full stack packaged as a Helm chart under `helm/ticketing/`
+- `values.yaml` controls image tags, replicas, resources, ingress host
+- Deploy: `helm install ticketing helm/ticketing/ --namespace ticketing`
+
+### Phase 5 — Monitoring
+- `kube-prometheus-stack` installed via Helm in `monitoring` namespace
+- `prometheus-fastapi-instrumentator` exposes `/metrics` on backend
+- ServiceMonitor scrapes both backend replicas every 15s
+- Grafana dashboards for HTTP request rate, latency, pod resource usage
+
+---
+
+## Local Setup
+
+### Prerequisites
+- Docker + Docker Compose v2
+- Minikube + kubectl
+- Helm v3
+- Jenkins (native)
+
+### Run with Docker Compose
 ```bash
+cp .env.example .env  # fill in secrets
 docker compose up --build
 ```
 
-3. Seed the default admin agent:
+Access: `http://localhost:3000`
 
+### Run with Kubernetes
 ```bash
-docker compose exec backend python scripts/seed.py
+minikube start
+helm install ticketing helm/ticketing/ --namespace ticketing --create-namespace
+echo "$(minikube ip) ticketing.local" | sudo tee -a /etc/hosts
 ```
 
-4. Open:
+Access: `http://ticketing.local`
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:8000`
-- Swagger: `http://localhost:8000/docs`
+### Run with Jenkins
+- Add `dockerhub-credentials` (Docker Hub token) to Jenkins global credentials
+- Add `ticketing-jwt-secret` and `ticketing-db-password` as Secret Text credentials
+- Create Pipeline job pointing to this repo, branch `main`, script path `Jenkinsfile`
 
-## Default login
+---
 
-Use the admin credentials from `.env`:
+## Repository Structure
+.
+├── backend/          # FastAPI application
+├── frontend/         # React + Vite application
+├── helm/ticketing/   # Helm chart
+├── k8s/              # Raw Kubernetes manifests
+├── Jenkinsfile       # CI/CD pipeline
+└── docker-compose.yml
 
-- Email: `DEFAULT_ADMIN_EMAIL`
-- Password: `DEFAULT_ADMIN_PASSWORD`
+---
 
-## API endpoints
-
-### Auth
-- `POST /api/v1/auth/login`
-- `GET /api/v1/auth/me`
-
-### Agents
-- `GET /api/v1/agents`
-- `GET /api/v1/agents/available`
-- `GET /api/v1/agents/availability`
-- `PATCH /api/v1/agents/me/availability`
-
-### Tickets
-- `GET /api/v1/tickets`
-- `POST /api/v1/tickets`
-- `GET /api/v1/tickets/{ticket_id}`
-- `PATCH /api/v1/tickets/{ticket_id}/status`
-- `PATCH /api/v1/tickets/{ticket_id}/assignment`
-
-### Dashboard
-- `GET /api/v1/dashboard/summary`
-
-## Phase 1 schema notes
-
-Tickets already include an optional `asset_id` field so a future asset inventory module can attach assets without rewriting the ticket model.
+## Images
+- `kushal81/ticketing-backend`
+- `kushal81/ticketing-frontend`
